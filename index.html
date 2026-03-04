@@ -717,55 +717,35 @@ const ADMIN_PASSWORD = "0000";
 // 🔥 [1. 구글 시트 연동을 위한 일정 전역 변수]
 let travelSchedule = []; 
 
-// 🔥 [2. 구글 시트 API URL (개발 완료 후 교체하세요)]
-// TODO: 배포하신 GAS Web App URL에 ?mode=getSchedule 와 같이 파라미터를 추가하여 여기에 적어주세요.
-const SCHEDULE_GAS_URL = ""; 
+// 🔥 [2. 구글 시트 API URL (여기에 새로 배포하신 GAS 주소를 넣으시면 됩니다)]
+// TODO: 복사하신 GAS URL 끝에 반드시 ?mode=getSchedule 를 붙여주세요!
+const SCHEDULE_GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec?mode=getSchedule"; 
 
-// 🔥 [3. 안전망(Fallback): 구글 시트 로딩 실패 시 표시될 기본 데이터 (기존 하드코딩 데이터)]
+// 🔥 [3. 안전망(Fallback): 테스트를 위해 기존 내장 일정을 완전히 지웠습니다!]
+// 만약 GAS 연동이 실패하면 화면에 일정이 아니라 이 에러 문구들이 뜨게 됩니다.
 const fallbackSchedule = [
   {
-    day: "DAY 1", date: "2026.03.11 (수)", title: "설레는 시작, 타이베이",
+    day: "연동 확인 필요", date: "테스트 모드", title: "구글 시트 연동에 실패했습니다.",
     items: [
-      { time:"08:00/9:00", icon:"✈️", title:"인천국제공항 2터미널 출발", desc:"OZ 711 / KE 2021" },
-      { time:"12:30/13:30", icon:"🍜", title:"중식 | 우육면", desc:"대만의 소울 푸드, 진한 국물의 우육면" },
-      { time:"13:30/14:30", icon:"🏛️", title:"단수이 옛거리/홍마오청/진리대학", desc:"붉은 벽돌의 역사와 영화 말할 수 없는 비밀 촬영지" },
-      { time:"16:30/17:30", icon:"🏨", title:"호텔 체크인", desc:"타이베이 메리어트 호텔[5성급]" },
-      { time:"18:00/18:30", icon:"🍽️", title:"석식 | 타카오 샤브샤브", desc:"1인 1냄비로 즐기는 프리미엄 샤브샤브" },
-      { time:"19:30/20:00", icon:"🌃", title:"타이베이 101 전망대", desc:"타이베이의 야경을 한눈에 담는 랜드마크" },
-      { time:"21:00/21:30", icon:"🏨", title:"호텔복귀", desc:"타이베이 메리어트 호텔[5성급]" }
+      { time:"-", icon:"⚠️", title:"데이터를 불러오지 못함", desc:"GAS 코드나 시트 이름을 다시 확인해주세요." }
     ]
   },
   {
-    day: "DAY 2", date: "2026.03.12 (목)", title: "힐링과 화합의 밤",
+    day: "연동 확인 필요", date: "테스트 모드", title: "구글 시트 연동에 실패했습니다.",
     items: [
-      { time:"08:30/9:00", icon:"🚌", title:"선택 관광", desc:"개인 선택 일정" },
-      { time:"08:30", icon:"🚌", title:"티엔라이 온천", desc:"양명산의 자연을 바라보며 즐기는 유황 온천" },
-      { time:"9:00", icon:"🏛️", title:"고궁박물관", desc:"중국 5천년 역사의 보물 창고" },
-      { time:"13:00", icon:"🍽️", title:"중식", desc:"베이징덕 바삭한 껍질과 촉촉한 속살의 조화" },
-      { time:"14:30", icon:"🛍️", title:"서문정", desc:"타이베이의 명동, 젊음과 활기의 거리" },
-      { time:"08:30/9:00", icon:"🧭", title:"자유시간", desc:"중식비 지급" },
-      { time:"18:00", icon:"🎉", title:"ISC 만찬", desc:"필수 참석-화합과 축하의 밤" }
+      { time:"-", icon:"⚠️", title:"데이터를 불러오지 못함", desc:"GAS 코드나 시트 이름을 다시 확인해주세요." }
     ]
   },
   {
-    day: "DAY 3", date: "2026.03.13 (금)", title: "대만의 자연과 낭만",
+    day: "연동 확인 필요", date: "테스트 모드", title: "구글 시트 연동에 실패했습니다.",
     items: [
-      { time:"10:00", icon:"🏨🍽️", title:"호텔 조식 후 출발", desc:"타이베이 메리어트 호텔[5성급]" },
-      { time:"11:00", icon:"🌊", title:"야류 해상공원", desc:"자연이 조각한 기암괴석" },
-      { time:"12:30", icon:"🦐", title:"중식 | 씨푸드", desc:"바다 향 가득한 신선한 현지 해산물" },
-      { time:"14:30", icon:"🏮", title:"스펀 천등날리기", desc:"기찻길 위에서 소원을 담아 날리는 천등" },
-      { time:"17:00", icon:"🏮", title:"지우펀 야경", desc:"홍등이 밝히는 좁은 골목의 몽환적 분위기" },
-      { time:"20:00", icon:"🌊", title:"야시장 및 석식", desc:"지파이, 망고빙수 등 대만 길거리 음식 정복" },
-      { time:"21:30", icon:"🏨", title:"호텔복귀", desc:"타이베이 메리어트 호텔[5성급]" },
-      { time:"전일", icon:"🧭", title:"자유일정 선택시", desc:"전체 개인부담(중식비 지급 X)" }
+      { time:"-", icon:"⚠️", title:"데이터를 불러오지 못함", desc:"GAS 코드나 시트 이름을 다시 확인해주세요." }
     ]
   },
   {
-    day: "DAY 4", date: "2026.03.14 (토)", title: "굿바이 타이베이",
+    day: "연동 확인 필요", date: "테스트 모드", title: "구글 시트 연동에 실패했습니다.",
     items: [
-      { time:"08:00/9:00", icon:"🏨", title:"호텔 체크아웃", desc:"타이베이 메리어트 호텔[5성급]" },
-      { time:"11:40/12:25", icon:"✈️", title:"타이베이 출발", desc:"OZ 712 / KE 2022" },
-      { time:"15:25/15:50", icon:"🇰🇷", title:"인천 도착", desc:"ISC in Taiwan" }
+      { time:"-", icon:"⚠️", title:"데이터를 불러오지 못함", desc:"GAS 코드나 시트 이름을 다시 확인해주세요." }
     ]
   }
 ];
@@ -823,7 +803,7 @@ async function initSchedule() {
     }
   } catch(e) {
     console.warn("구글 시트 일정을 불러오지 못해 기본 내장 일정을 사용합니다.", e);
-    travelSchedule = fallbackSchedule; // 안전망 가동
+    travelSchedule = fallbackSchedule; // 연동 실패 시 에러 화면 가동
   }
 }
     
@@ -971,6 +951,7 @@ function nowKSTString() {
   return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
 }
 
+// 식대 저장 URL
 const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
 
 function logMealPaymentToSheet(payload) {
@@ -1253,9 +1234,10 @@ function openPage(type, fromHistory = false) {
        return;
     }
 
+    // 🔥 시트 연동 실패 시 보이게 될 에러 화면
     const day = travelSchedule[idx];
     if(!day) {
-       c.innerHTML = `<div style="text-align:center; padding:50px 20px;">해당 일자 데이터가 없습니다.</div>`;
+       c.innerHTML = `<div style="text-align:center; padding:50px 20px; font-weight:bold; color:#dc2626;">해당 일자 데이터가 없습니다.<br><br><span style="font-size:13px; color:#6b7280; font-weight:normal;">구글 시트 연동이 아직 되지 않았거나 오류가 발생했습니다.</span></div>`;
        return;
     }
 
