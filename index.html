@@ -971,7 +971,7 @@ function nowKSTString() {
   return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
 }
 
-const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbxFputTQHPSKLcpSPqgjqwBHSkU5P34HWni9MbW0tcw-yz22WLMh9BqTshTHUd9yXbPQw/exec";
+const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
 
 function logMealPaymentToSheet(payload) {
   if (!currentUser) return;
