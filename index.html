@@ -779,7 +779,7 @@ const ADMIN_PASSWORD = "0000";
 let travelSchedule = []; 
 
 // 🔥 [2. 구글 시트 API 공통 URL 설정 (이 주소 하나만 입력하면 끝!)]
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbw5aXdeEY8yGmGqWOzPA84g8izKXMcpkAypzNF52PthyIvBvq9vGNc2ACxbu-hPnVwVAw/exec";
 
 
 // 🔥 [3. 안전망(Fallback): 테스트를 위해 기존 내장 일정을 완전히 지웠습니다!]
@@ -877,7 +877,9 @@ async function syncPeopleData() {
     if (Array.isArray(sheetPeople)) {
       sheetPeople.forEach(sp => {
         // 로컬 people.json 기반 employees 배열에서 해당 사번 찾기
-        const emp = employees.find(e => String(e.id) === String(sp.id));
+        // 시트에서 id를 가져올 때 앞에 붙은 작은따옴표(')를 제거하고 비교합니다.
+        const cleanSpId = String(sp.id).replace(/^'/, '').trim();
+        const emp = employees.find(e => String(e.id).trim() === cleanSpId);
         if (emp && sp.myTour) {
           // 구글 시트의 최신 선택관광(쉼표구분)으로 덮어씌움
           emp.myTour = sp.myTour.split(",").map(s => s.trim());
@@ -1080,7 +1082,8 @@ function logMealPaymentToSheet(payload) {
   if (!currentUser) return;
   fetch(GAS_URL, {
     method: "POST", mode: "no-cors",
-    body: JSON.stringify({ type: "meal", id: currentUser.id, name: currentUser.name, action: payload.action, tour: payload.tour, time: payload.time })
+    // 🔥 생년월일 앞자리 0 보존을 위해 id 값 앞에 작은따옴표(') 강제 추가
+    body: JSON.stringify({ type: "meal", id: "'" + String(currentUser.id), name: currentUser.name, action: payload.action, tour: payload.tour, time: payload.time })
   }).catch(console.error);
 }
 
@@ -1360,7 +1363,8 @@ async function saveAdminTour() {
     // 구글 시트로 POST 요청 보내서 업데이트
     await fetch(GAS_URL, {
       method: "POST", mode: "no-cors",
-      body: JSON.stringify({ type: "updateTour", id: String(currentUser.id), myTour: tourStr })
+      // 🔥 생년월일 앞자리 0 보존을 위해 id 값 앞에 작은따옴표(') 강제 추가
+      body: JSON.stringify({ type: "updateTour", id: "'" + String(currentUser.id), myTour: tourStr })
     });
     
     // 로컬 데이터 즉시 갱신
