@@ -779,7 +779,7 @@ const ADMIN_PASSWORD = "0000";
 let travelSchedule = []; 
 
 // 🔥 [2. 구글 시트 API 공통 URL 설정 (이 주소 하나만 입력하면 끝!)]
-const GAS_URL = "https://script.google.com/macros/s/AKfycbwtFmkZzdGSYipktshQA_8HWfRPw_4rEk6QWK_zkxUbojdRIYHvoE8p3c02-KMFXjY/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
 
 
 // 🔥 [3. 안전망(Fallback): 테스트를 위해 기존 내장 일정을 완전히 지웠습니다!]
@@ -1360,7 +1360,7 @@ async function saveAdminTour() {
     // 구글 시트로 POST 요청 보내서 업데이트
     await fetch(GAS_URL, {
       method: "POST", mode: "no-cors",
-      body: JSON.stringify({ type: "updateTour", id: currentUser.id, myTour: tourStr })
+      body: JSON.stringify({ type: "updateTour", id: String(currentUser.id), myTour: tourStr })
     });
     
     // 로컬 데이터 즉시 갱신
