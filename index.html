@@ -778,13 +778,8 @@ const ADMIN_PASSWORD = "0000";
 // 🔥 [1. 구글 시트 연동을 위한 일정 전역 변수]
 let travelSchedule = []; 
 
-// 🔥 [2. 구글 시트 API URL 설정]
-// 일정 가져오는 주소
-const SCHEDULE_GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec?mode=getSchedule"; 
-// 식대 및 개인일정 업데이트 주소 (POST 전송용 공통 URL)
-const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
-// 개인 일정(People 시트) 가져오는 주소
-const PEOPLE_GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec?mode=getPeople";
+// 🔥 [2. 구글 시트 API 공통 URL 설정 (이 주소 하나만 입력하면 끝!)]
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwtFmkZzdGSYipktshQA_8HWfRPw_4rEk6QWK_zkxUbojdRIYHvoE8p3c02-KMFXjY/exec";
 
 
 // 🔥 [3. 안전망(Fallback): 테스트를 위해 기존 내장 일정을 완전히 지웠습니다!]
@@ -848,13 +843,13 @@ function parseScheduleData(flatData) {
 // 🔥 [5. 초기화 시 구글 시트에서 공통 일정 데이터를 불러오는 함수]
 async function initSchedule() {
   try {
-    if(!SCHEDULE_GAS_URL || SCHEDULE_GAS_URL === "") {
+    if(!GAS_URL || GAS_URL === "") {
        console.log("GAS URL이 설정되지 않아 기본 내장 일정을 사용합니다.");
        travelSchedule = fallbackSchedule;
        return;
     }
     
-    const targetUrl = SCHEDULE_GAS_URL + (SCHEDULE_GAS_URL.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    const targetUrl = GAS_URL + '?mode=getSchedule&_t=' + Date.now();
     const res = await fetch(targetUrl);
     const result = await res.json();
     
@@ -875,7 +870,7 @@ async function initSchedule() {
 // 🔥 [새 기능: 구글 시트에서 개인별 선택 관광 정보 가져와서 덮어쓰기]
 async function syncPeopleData() {
   try {
-    const res = await fetch(PEOPLE_GAS_URL + "&_t=" + Date.now());
+    const res = await fetch(GAS_URL + "?mode=getPeople&_t=" + Date.now());
     const result = await res.json();
     const sheetPeople = result.data || result;
     
@@ -1083,7 +1078,7 @@ function nowKSTString() {
 
 function logMealPaymentToSheet(payload) {
   if (!currentUser) return;
-  fetch(MEAL_SHEET_URL, {
+  fetch(GAS_URL, {
     method: "POST", mode: "no-cors",
     body: JSON.stringify({ type: "meal", id: currentUser.id, name: currentUser.name, action: payload.action, tour: payload.tour, time: payload.time })
   }).catch(console.error);
@@ -1363,7 +1358,7 @@ async function saveAdminTour() {
 
   try {
     // 구글 시트로 POST 요청 보내서 업데이트
-    await fetch(MEAL_SHEET_URL, {
+    await fetch(GAS_URL, {
       method: "POST", mode: "no-cors",
       body: JSON.stringify({ type: "updateTour", id: currentUser.id, myTour: tourStr })
     });
@@ -1748,7 +1743,7 @@ function openPage(type, fromHistory = false) {
 }
 
 async function syncMealStatusFromServer(userId, tour, wrap) {
-  const url = `${MEAL_SHEET_URL}?mode=customerAdmin&id=${userId}`;
+  const url = `${GAS_URL}?mode=customerAdmin&id=${userId}`;
   const res = await fetch(url);
   const data = await res.json();
   const status = data.mealMap?.[tour];
