@@ -160,7 +160,28 @@
     .menu-wrapper { 
         position: relative; 
         margin-left: auto;
+        display: flex;
+        align-items: center;
     }
+
+    .sync-btn {
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #fff;
+      padding: 7px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex; align-items: center; gap: 4px;
+      margin-right: 8px;
+      transition: transform 0.1s, background 0.1s;
+    }
+    .sync-btn:active { background: rgba(0, 0, 0, 0.6); transform: scale(0.95); }
+    .sync-btn.syncing svg { animation: spin 1s linear infinite; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
 
     .menu-btn {
       background: rgba(0, 0, 0, 0.55); 
@@ -486,6 +507,25 @@
     .conv-copy-btn svg { width: 14px; height: 14px; }
 
     /* =========================================================
+       🔥🔥 관리자 일정 변경 모달 스타일 추가
+    ========================================================= */
+    .admin-edit-btn { background: none; border: 1px solid var(--border-light); color: var(--text-sub); padding: 8px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; cursor: pointer; display: block; margin: 20px auto 0; transition: background 0.2s; }
+    .admin-edit-btn:active { background: var(--bg-main); }
+    
+    .admin-modal-dim { position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 5000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .admin-modal-content { background: #fff; padding: 24px; border-radius: 20px; width: 90%; max-width: 320px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+    .admin-modal-content h3 { margin: 0 0 8px; font-size: 18px; color: var(--primary-color); font-weight: 800; }
+    .admin-checkbox-group { display: flex; flex-direction: column; gap: 12px; margin-bottom: 24px; margin-top: 16px; }
+    .admin-checkbox-label { display: flex; align-items: center; gap: 10px; font-size: 15px; font-weight: 600; color: var(--text-main); cursor: pointer; padding: 8px; border-radius: 8px; transition: background 0.2s; }
+    .admin-checkbox-label:active { background: var(--bg-main); }
+    .admin-checkbox-label input { width: 18px; height: 18px; accent-color: var(--accent-color); }
+    .admin-modal-actions { display: flex; gap: 8px; }
+    .admin-modal-actions button { flex: 1; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 700; cursor: pointer; border: none; transition: transform 0.1s; }
+    .admin-modal-actions button:active { transform: scale(0.96); }
+    .btn-cancel { background: var(--bg-main); color: var(--text-sub); }
+    .btn-save { background: var(--primary-color); color: #fff; }
+
+    /* =========================================================
        [8] 데스크탑 (PC) 대응
     ========================================================= */
     @media (min-width: 768px) {
@@ -609,6 +649,10 @@
       <img src="assets/images/logo.png" class="header-logo" alt="INCAR Logo">
       
       <div class="menu-wrapper">
+        <button id="syncBtn" class="sync-btn" onclick="forceSyncData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-10.31l3.25 2.74"/></svg>
+          동기화
+        </button>
         <button class="menu-btn" onclick="toggleMenu()">☰ 여행정보</button>
         
         <div id="categoryDropdown" class="category-dropdown">
@@ -707,6 +751,23 @@
 
 </main>
 
+<!-- 🔥 관리자용 일정 변경 모달 HTML -->
+<div id="adminTourModal" class="admin-modal-dim">
+  <div class="admin-modal-content" onclick="event.stopPropagation()">
+    <h3>⚙️ 개인 일정 변경</h3>
+    <p style="font-size:12px; color:var(--text-sub); margin-bottom:16px;">선택 관광을 변경하고 저장하세요.<br>(구글 시트에 즉시 반영됩니다)</p>
+    <div class="admin-checkbox-group">
+      <label class="admin-checkbox-label"><input type="checkbox" value="티엔라이" id="cb_tour_1"> 티엔라이 온천</label>
+      <label class="admin-checkbox-label"><input type="checkbox" value="고궁박물관" id="cb_tour_2"> 고궁박물관</label>
+      <label class="admin-checkbox-label"><input type="checkbox" value="자유일정" id="cb_tour_3"> 자유일정</label>
+    </div>
+    <div class="admin-modal-actions">
+      <button class="btn-cancel" onclick="closeAdminTourModal()">취소</button>
+      <button class="btn-save" onclick="saveAdminTour()">저장</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ================= 공통 전역 변수 ================= */
 let pageHistory = [];
@@ -717,12 +778,16 @@ const ADMIN_PASSWORD = "0000";
 // 🔥 [1. 구글 시트 연동을 위한 일정 전역 변수]
 let travelSchedule = []; 
 
-// 🔥 [2. 구글 시트 API URL (여기에 새로 배포하신 GAS 주소를 넣으시면 됩니다)]
-// TODO: 복사하신 GAS URL 끝에 반드시 ?mode=getSchedule 를 붙여주세요!
+// 🔥 [2. 구글 시트 API URL 설정]
+// 일정 가져오는 주소
 const SCHEDULE_GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec?mode=getSchedule"; 
+// 식대 및 개인일정 업데이트 주소 (POST 전송용 공통 URL)
+const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
+// 개인 일정(People 시트) 가져오는 주소
+const PEOPLE_GAS_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec?mode=getPeople";
+
 
 // 🔥 [3. 안전망(Fallback): 테스트를 위해 기존 내장 일정을 완전히 지웠습니다!]
-// 만약 GAS 연동이 실패하면 화면에 일정이 아니라 이 에러 문구들이 뜨게 됩니다.
 const fallbackSchedule = [
   {
     day: "연동 확인 필요", date: "테스트 모드", title: "구글 시트 연동에 실패했습니다.",
@@ -780,7 +845,7 @@ function parseScheduleData(flatData) {
   return result;
 }
 
-// 🔥 [5. 초기화 시 구글 시트에서 일정 데이터를 불러오는 함수]
+// 🔥 [5. 초기화 시 구글 시트에서 공통 일정 데이터를 불러오는 함수]
 async function initSchedule() {
   try {
     if(!SCHEDULE_GAS_URL || SCHEDULE_GAS_URL === "") {
@@ -789,21 +854,87 @@ async function initSchedule() {
        return;
     }
     
-    const res = await fetch(SCHEDULE_GAS_URL);
+    const targetUrl = SCHEDULE_GAS_URL + (SCHEDULE_GAS_URL.includes('?') ? '&' : '?') + '_t=' + Date.now();
+    const res = await fetch(targetUrl);
     const result = await res.json();
     
-    // GAS에서 { data: [...] } 형태로 보내거나 단순 [...] 배열로 보내는 것을 모두 대응
     const rawData = result.data || result; 
     
     if (Array.isArray(rawData) && rawData.length > 0) {
       travelSchedule = parseScheduleData(rawData);
-      console.log("구글 시트 일정 로드 완료:", travelSchedule);
+      console.log("구글 시트 공통 일정 로드 완료:", travelSchedule);
     } else {
       throw new Error("데이터 배열이 비어있거나 형식이 맞지 않습니다.");
     }
   } catch(e) {
     console.warn("구글 시트 일정을 불러오지 못해 기본 내장 일정을 사용합니다.", e);
-    travelSchedule = fallbackSchedule; // 연동 실패 시 에러 화면 가동
+    travelSchedule = fallbackSchedule; 
+  }
+}
+
+// 🔥 [새 기능: 구글 시트에서 개인별 선택 관광 정보 가져와서 덮어쓰기]
+async function syncPeopleData() {
+  try {
+    const res = await fetch(PEOPLE_GAS_URL + "&_t=" + Date.now());
+    const result = await res.json();
+    const sheetPeople = result.data || result;
+    
+    if (Array.isArray(sheetPeople)) {
+      sheetPeople.forEach(sp => {
+        // 로컬 people.json 기반 employees 배열에서 해당 사번 찾기
+        const emp = employees.find(e => String(e.id) === String(sp.id));
+        if (emp && sp.myTour) {
+          // 구글 시트의 최신 선택관광(쉼표구분)으로 덮어씌움
+          emp.myTour = sp.myTour.split(",").map(s => s.trim());
+        }
+      });
+      // 현재 로그인 상태라면 currentUser 객체도 최신으로 갱신
+      if (currentUser) {
+        currentUser = employees.find(e => String(e.id) === String(currentUser.id)) || currentUser;
+      }
+      console.log("구글 시트 개인 일정 병합 완료");
+    }
+  } catch(e) {
+    console.warn("구글 시트 개인 일정 로드 실패", e);
+  }
+}
+
+// 🔥 [수동 동기화(새로고침) 함수]
+async function forceSyncData() {
+  const btn = document.getElementById("syncBtn");
+  if (btn) {
+    btn.classList.add("syncing");
+    btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-10.31l3.25 2.74"/></svg> 갱신중`;
+  }
+
+  try {
+    // 1. 피플 JSON 새로고침 (깃허브 수정 사항 반영 - 기본 베이스)
+    const resPeople = await fetch("people/employees.json?ts=" + Date.now());
+    employees = await resPeople.json();
+    
+    // 2. 공통 일정 시트 새로고침 & 개인 선택관광 시트 새로고침 병렬 실행
+    await Promise.all([initSchedule(), syncPeopleData()]);
+    
+    if (btn) {
+      btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> 완료`;
+    }
+    
+    // 3. 현재 열려있는 페이지가 일정 관련 화면이라면 즉시 다시 그리기
+    const t = document.getElementById("detailTitle");
+    if (t && (t.textContent.includes("일정") || t.textContent.includes("나의 선택 관광")) && pageHistory.length > 0) {
+      const currentType = pageHistory[pageHistory.length - 1];
+      openPage(currentType, true); 
+    }
+  } catch (e) {
+    console.error("동기화 실패", e);
+    if (btn) btn.innerHTML = `⚠️ 실패`;
+  } finally {
+    if (btn) {
+      btn.classList.remove("syncing");
+      setTimeout(() => {
+        btn.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.59-10.31l3.25 2.74"/></svg> 동기화`;
+      }, 2000);
+    }
   }
 }
     
@@ -876,22 +1007,21 @@ const myTourTemplates = [
 function renderMyTour() {
   const selected = currentUser.myTour || [];
   const matchedCards = myTourTemplates.filter(t => selected.some(input => input.includes(t.keyword)));
-  if (matchedCards.length === 0) return `<div class="card">선택된 관광이 없습니다.</div>`;
+  if (matchedCards.length === 0) return `<div class="day-card" style="text-align:center; padding:40px 20px; color:var(--text-sub);">선택된 관광이 없습니다.</div>`;
   return matchedCards.map(t => t.html).join("");
 }
 
+// 🔥 초기 데이터 로드 체인
 fetch("people/employees.json?ts=" + Date.now())
   .then(res => res.json())
   .then(data => {
     employees = data;
-    // 🔥 [6. 피플 데이터 로딩 성공 후 시트 일정 데이터도 불러옴]
-    initSchedule().then(() => tryAutoLogin()); 
+    // json 로드 후 구글시트(공통일정 + 개인일정) 병렬 동기화
+    return Promise.all([initSchedule(), syncPeopleData()]); 
   })
+  .then(() => tryAutoLogin())
   .catch(err => {
-    console.warn("로컬 JSON 로드 실패, 내장 데이터를 사용합니다.");
-    if(typeof EMBEDDED_EMPLOYEES !== 'undefined') {
-        employees = EMBEDDED_EMPLOYEES;
-    }
+    console.warn("로컬 JSON 로드 실패", err);
     initSchedule().then(() => tryAutoLogin());
   });
 
@@ -950,9 +1080,6 @@ function showMealDetail(wrap) {
 function nowKSTString() {
   return new Intl.DateTimeFormat("ko-KR", { timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date());
 }
-
-// 식대 저장 URL
-const MEAL_SHEET_URL = "https://script.google.com/macros/s/AKfycbwls8Qadv6_2x8YbDvhoZXbzvCNQIMScsWLzc5PyYJen-AkUhu3p21oC5Oc3Mm_lpdMnw/exec";
 
 function logMealPaymentToSheet(payload) {
   if (!currentUser) return;
@@ -1154,18 +1281,16 @@ function pickTimeByAirline(timeStr, airline) {
   return isKoreanAir ? parts[parts.length - 1] : parts[0];
 }
 
-// 🔥 [7. 구글 시트에서 가져온 데이터라도 이 로직이 작동하게 유지]
+// 🔥 [DAY 2 선택 관광 로직]
 function buildDay2ItemsForUser(user, userAirline) {
   const tours = user?.myTour || [];
   const hasTienlai = tours.some(v => String(v).includes("티엔라이"));
   const hasGugung  = tours.some(v => String(v).includes("고궁박물관"));
   const hasFree    = tours.some(v => String(v).includes("자유일정"));
 
-  // 여기서 travelSchedule 은 시트에서 파싱된 글로벌 변수를 바라봄
   const day2 = travelSchedule.find(d => String(d.day).includes("DAY 2"));
   const items = day2?.items || [];
   
-  // 🔥 시트에서도 itemTitle에 띄어쓰기 없이 정확하게 아래 문자열을 기입해야 함!
   const byTitle = (title) => items.find(x => String(x.title).includes(title));
 
   const itemSelect = byTitle("선택 관광");
@@ -1208,6 +1333,62 @@ function copyConvText(btn, text) {
   document.body.removeChild(textArea);
 }
 
+// 🔥 [관리자용 선택관광 변경 모달 제어]
+function openAdminTourModal() {
+  const pw = prompt("관리자 비밀번호를 입력하세요.");
+  if (pw !== ADMIN_PASSWORD) { alert("비밀번호가 올바르지 않습니다."); return; }
+  
+  // 현재 사용자 일정 세팅
+  document.getElementById("cb_tour_1").checked = currentUser.myTour?.includes("티엔라이");
+  document.getElementById("cb_tour_2").checked = currentUser.myTour?.includes("고궁박물관");
+  document.getElementById("cb_tour_3").checked = currentUser.myTour?.includes("자유일정");
+  
+  document.getElementById("adminTourModal").style.display = "flex";
+}
+
+function closeAdminTourModal() {
+  document.getElementById("adminTourModal").style.display = "none";
+}
+
+async function saveAdminTour() {
+  const selected = [];
+  if (document.getElementById("cb_tour_1").checked) selected.push("티엔라이");
+  if (document.getElementById("cb_tour_2").checked) selected.push("고궁박물관");
+  if (document.getElementById("cb_tour_3").checked) selected.push("자유일정");
+  
+  const tourStr = selected.join(",");
+  const btn = document.querySelector(".btn-save");
+  btn.textContent = "저장중...";
+  btn.disabled = true;
+
+  try {
+    // 구글 시트로 POST 요청 보내서 업데이트
+    await fetch(MEAL_SHEET_URL, {
+      method: "POST", mode: "no-cors",
+      body: JSON.stringify({ type: "updateTour", id: currentUser.id, myTour: tourStr })
+    });
+    
+    // 로컬 데이터 즉시 갱신
+    currentUser.myTour = selected;
+    alert("일정이 구글 시트에 성공적으로 저장되었습니다!");
+    closeAdminTourModal();
+    
+    // 화면 즉시 리렌더링
+    const container = document.getElementById("myTourContainer");
+    if(container) container.innerHTML = renderMyTour();
+    
+    // 혹시 모르니 백그라운드에서 다시 전체 긁어오기
+    syncPeopleData();
+
+  } catch(e) {
+    console.error(e);
+    alert("일정 변경 중 오류가 발생했습니다. 인터넷 연결을 확인해주세요.");
+  } finally {
+    btn.textContent = "저장";
+    btn.disabled = false;
+  }
+}
+
 function openPage(type, fromHistory = false) {
   document.body.classList.remove('menu-open'); 
 
@@ -1228,13 +1409,11 @@ function openPage(type, fromHistory = false) {
   if (type.startsWith("day_")) {
     const idx = parseInt(type.split("_")[1]);
     
-    // 시트에서 불러온 전역 변수 travelSchedule 바라봄
     if(travelSchedule.length === 0) {
        c.innerHTML = `<div style="text-align:center; padding:50px 20px;">일정을 불러오는 중입니다...</div>`;
        return;
     }
 
-    // 🔥 시트 연동 실패 시 보이게 될 에러 화면
     const day = travelSchedule[idx];
     if(!day) {
        c.innerHTML = `<div style="text-align:center; padding:50px 20px; font-weight:bold; color:#dc2626;">해당 일자 데이터가 없습니다.<br><br><span style="font-size:13px; color:#6b7280; font-weight:normal;">구글 시트 연동이 아직 되지 않았거나 오류가 발생했습니다.</span></div>`;
@@ -1243,7 +1422,6 @@ function openPage(type, fromHistory = false) {
 
     t.textContent = `🗓 ${day.day} 일정`;
 
-    // DAY 2 선택 관광 로직 연결
     const items = String(day.day).includes("DAY 2") ? buildDay2ItemsForUser(currentUser, userAirline) : day.items;
 
     c.innerHTML = `
@@ -1318,7 +1496,13 @@ function openPage(type, fromHistory = false) {
 
   if (type === "myTour") {
     t.textContent = "🎒 나의 선택 관광";
-    c.innerHTML = `<div class="detail-content-wrap"><div class="mytour-wrap">${renderMyTour()}</div></div>`;
+    // 🔥 관리자용 일정 수정 버튼을 하단에 추가
+    c.innerHTML = `
+      <div class="detail-content-wrap">
+        <div class="mytour-wrap" id="myTourContainer">${renderMyTour()}</div>
+        <button class="admin-edit-btn" onclick="openAdminTourModal()">⚙️ 일정 변경 (관리자용)</button>
+      </div>`;
+    
     setTimeout(() => {
       const wrap = document.querySelector('.meal-check[data-tour="자유일정"]');
       if (!wrap) return;
@@ -1601,17 +1785,6 @@ window.addEventListener("popstate", (event) => {
     }
   }
 });
-
-function submitRequest() {
-  const requestText = document.getElementById("requestInput").value.trim();
-  if (!requestText) { alert("요청사항을 입력해주세요."); return; }
-  if (!currentUser) { alert("로그인 정보가 없습니다."); return; }
-   
-  fetch(MEAL_SHEET_URL, {
-    method: "POST", mode: "no-cors",
-    body: JSON.stringify({ type: "request", id: currentUser.id, name: currentUser.name, request: requestText, time: nowKSTString() })
-  }).then(() => { alert("요청사항이 전송되었습니다."); document.getElementById("requestInput").value = ""; }).catch(err => { console.error(err); alert("전송 중 오류가 발생했습니다."); });
-}
 
 function startWorldClock() {
   function updateTime() {
